@@ -26,11 +26,15 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#define RESOURCE_HAS_LOCAL_VALUE    (1ul << 0)
+
 /**
  * An integer value with an associated owner.
  */
 struct int_resource {
     int             value;
+    int             local_value;
+    unsigned long   flags;
     pthread_t       owner;
     pthread_mutex_t lock;
 };
@@ -38,6 +42,8 @@ struct int_resource {
 #define INT_RESOURCE_INITIALIZER \
     { \
         .value = 0, \
+        .local_value = 0, \
+        .flags = 0, \
         .owner = 0, \
         .lock  = PTHREAD_MUTEX_INITIALIZER \
     }
@@ -85,7 +91,7 @@ err_pthread_mutex_lock:
 }
 
 static void
-release_int_resource(struct int_resource* res)
+release_int_resource(struct int_resource* res, bool commit)
 {
     pthread_t self = pthread_self();
 
@@ -97,6 +103,14 @@ release_int_resource(struct int_resource* res)
     }
 
     if (res->owner && res->owner == self) {
+
+        if (res->flags & RESOURCE_HAS_LOCAL_VALUE) {
+            if (commit) {
+                res->value = res->local_value;
+            }
+            res->flags &= ~RESOURCE_HAS_LOCAL_VALUE;
+        }
+
         res->owner = 0;
     }
 
@@ -116,7 +130,11 @@ load_int(struct int_resource* res, int* value)
         return false;
     }
 
-    *value = res->value;
+    if (res->flags & RESOURCE_HAS_LOCAL_VALUE) {
+        *value = res->local_value;
+    } else {
+        *value = res->value;
+    }
 
     return true;
 }
@@ -129,7 +147,8 @@ store_int(struct int_resource* res, int value)
         return false;
     }
 
-    res->value = value;
+    res->local_value = value;
+    res->flags |= RESOURCE_HAS_LOCAL_VALUE;
 
     return true;
 }
@@ -174,8 +193,8 @@ producer_func(void)
             commit = true;
 
         release:
-            release_int_resource(g_int_resource + 0);
-            release_int_resource(g_int_resource + 1);
+            release_int_resource(g_int_resource + 0, commit);
+            release_int_resource(g_int_resource + 1, commit);
         }
     }
 }
@@ -225,8 +244,8 @@ consumer_func(void)
             commit = true;
 
         release:
-            release_int_resource(g_int_resource + 0);
-            release_int_resource(g_int_resource + 1);
+            release_int_resource(g_int_resource + 0, commit);
+            release_int_resource(g_int_resource + 1, commit);
         }
 
         printf("Loaded i0=%d, i1=%d\n", i0, i1);
