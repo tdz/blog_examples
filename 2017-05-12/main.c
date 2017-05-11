@@ -145,6 +145,8 @@ static struct int_resource g_int_resource[] = {
 static void
 producer_func(void)
 {
+    unsigned int seed = 1;
+
     int i0 = 0;
 
     while (true) {
@@ -152,7 +154,7 @@ producer_func(void)
         sleep(1);
 
         ++i0;
-        int i1 = rand();
+        int i1 = rand_r(&seed);
 
         printf("Storing i0=%d, i1=%d\n", i0, i1);
 
@@ -179,6 +181,24 @@ producer_func(void)
 }
 
 static void
+verify_load(int i0, int i1)
+{
+    unsigned int seed = 1;
+
+    int i;
+    int value = 0;
+
+    for (i = 0; i < i0; ++i) {
+        value = rand_r(&seed);
+    }
+
+    if (value != i1) {
+        printf("Incorrect value pair (%d,%d), should be (%d,%d)\n",
+               i0, i1, i, value);
+    }
+}
+
+static void
 consumer_func(void)
 {
     while (true) {
@@ -199,6 +219,8 @@ consumer_func(void)
             if (!succ) {
                 goto release;
             }
+
+            verify_load(i0, i1);
 
             commit = true;
 
