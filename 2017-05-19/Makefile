@@ -15,7 +15,7 @@ SRCS := main.c \
         tm.h \
 
 # Language options
-CFLAGS += -std=gnu99 -Wall
+CFLAGS += -std=gnu99 -Wall -Wclobbered -O2
 
 # POSIX threads
 CFLAGS += -pthread

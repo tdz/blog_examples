@@ -93,12 +93,12 @@ release_int_resource(struct int_resource* res, bool commit)
     }
 }
 
-bool
+void
 load_int(struct int_resource* res, int* value)
 {
     bool succ = acquire_int_resource(res);
     if (!succ) {
-        return false;
+        tm_restart();
     }
 
     if (res->flags & RESOURCE_HAS_LOCAL_VALUE) {
@@ -106,20 +106,67 @@ load_int(struct int_resource* res, int* value)
     } else {
         *value = res->value;
     }
-
-    return true;
 }
 
-bool
+void
 store_int(struct int_resource* res, int value)
 {
     bool succ = acquire_int_resource(res);
     if (!succ) {
-        return false;
+        tm_restart();
     }
 
     res->local_value = value;
     res->flags |= RESOURCE_HAS_LOCAL_VALUE;
+}
 
-    return true;
+struct _tm_tx*
+_tm_get_tx()
+{
+    /* Thread-local transaction structure */
+    static __thread struct _tm_tx t_tm_tx;
+
+    return &t_tm_tx;
+}
+
+void
+_tm_begin(int value)
+{
+    /* Nothing to do */
+}
+
+#define arraylen(_array)    \
+    ( sizeof(_array) / sizeof(*(_array)) )
+
+#define arraybeg(_array)    \
+    ( _array )
+
+#define arrayend(_array)    \
+    ( arraybeg(_array) + arraylen(_array) )
+
+static void
+release_int_resources(struct int_resource* beg,
+                const struct int_resource* end, bool commit)
+{
+    while (beg < end) {
+        release_int_resource(beg, commit);
+        ++beg;
+    }
+}
+
+void
+_tm_commit()
+{
+    release_int_resources(arraybeg(g_int_resource),
+                          arrayend(g_int_resource), true);
+}
+
+void
+tm_restart()
+{
+    release_int_resources(arraybeg(g_int_resource),
+                          arrayend(g_int_resource), false);
+
+    /* Jump to the beginning of the transaction */
+    longjmp(_tm_get_tx()->env, 1);
 }

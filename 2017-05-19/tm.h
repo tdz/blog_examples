@@ -12,7 +12,42 @@
 #pragma once
 
 #include <pthread.h>
+#include <setjmp.h>
 #include <stdbool.h>
+
+/*
+ * Transaction beginning and end
+ */
+
+#define tm_save volatile
+
+struct _tm_tx {
+    jmp_buf env;
+};
+
+struct _tm_tx*
+_tm_get_tx(void);
+
+void
+_tm_begin(int value);
+
+void
+_tm_commit(void);
+
+#define tm_begin                            \
+    _tm_begin(setjmp(_tm_get_tx()->env));   \
+    {
+
+#define tm_commit                           \
+        _tm_commit();                       \
+    }
+
+void
+tm_restart(void);
+
+/*
+ * Integer resources
+ */
 
 #define RESOURCE_HAS_LOCAL_VALUE    (1ul << 0)
 
@@ -41,14 +76,17 @@ struct int_resource {
  */
 struct int_resource g_int_resource[2];
 
+/* Resource helpers
+ */
+
 bool
 acquire_int_resource(struct int_resource* res);
 
 void
 release_int_resource(struct int_resource* res, bool commit);
 
-bool
+void
 load_int(struct int_resource* res, int* value);
 
-bool
+void
 store_int(struct int_resource* res, int value);

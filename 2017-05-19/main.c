@@ -30,7 +30,7 @@ producer_func(void)
 {
     unsigned int seed = 1;
 
-    int i0 = 0;
+    tm_save int i0 = 0;
 
     while (true) {
 
@@ -41,25 +41,12 @@ producer_func(void)
 
         printf("Storing i0=%d, i1=%d\n", i0, i1);
 
-        bool commit = false;
+        tm_begin
 
-        while (!commit) {
+            store_int(g_int_resource + 0, i0);
+            store_int(g_int_resource + 1, i1);
 
-            bool succ = store_int(g_int_resource + 0, i0);
-            if (!succ) {
-                goto release;
-            }
-            succ = store_int(g_int_resource + 1, i1);
-            if (!succ) {
-                goto release;
-            }
-
-            commit = true;
-
-        release:
-            release_int_resource(g_int_resource + 0, commit);
-            release_int_resource(g_int_resource + 1, commit);
-        }
+        tm_commit
     }
 }
 
@@ -90,27 +77,14 @@ consumer_func(void)
 
         int i0, i1;
 
-        bool commit = false;
+        tm_begin
 
-        while (!commit) {
-
-            bool succ = load_int(g_int_resource + 1, &i1);
-            if (!succ) {
-                goto release;
-            }
-            succ = load_int(g_int_resource + 0, &i0);
-            if (!succ) {
-                goto release;
-            }
+            load_int(g_int_resource + 1, &i1);
+            load_int(g_int_resource + 0, &i0);
 
             verify_load(i0, i1);
 
-            commit = true;
-
-        release:
-            release_int_resource(g_int_resource + 0, commit);
-            release_int_resource(g_int_resource + 1, commit);
-        }
+        tm_commit
 
         printf("Loaded i0=%d, i1=%d\n", i0, i1);
     }
