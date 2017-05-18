@@ -10,7 +10,9 @@
 
 BIN := simpletm
 
-SRCS := main.c
+SRCS := main.c \
+        tm.c \
+        tm.h \
 
 # Language options
 CFLAGS += -std=gnu99 -Wall
@@ -42,4 +44,4 @@ mostlyclean:
 	$(RM) $(OBJS)
 
 $(BIN) : $(OBJS)
-	$(CC) $(CFLAGS) -o $@ $<
+	$(CC) $(CFLAGS) -o $@ $^
