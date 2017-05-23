@@ -25,6 +25,9 @@
 #include <unistd.h>
 #include "tm.h"
 
+static int g_i0 __attribute__((aligned(128)));
+static int g_i1 __attribute__((aligned(128)));
+
 static void
 producer_func(void)
 {
@@ -43,8 +46,8 @@ producer_func(void)
 
         tm_begin
 
-            store_int(g_int_resource + 0, i0);
-            store_int(g_int_resource + 1, i1);
+            store_int(&g_i0, i0);
+            store_int(&g_i1, i1);
 
         tm_commit
     }
@@ -79,8 +82,8 @@ consumer_func(void)
 
         tm_begin
 
-            load_int(g_int_resource + 1, &i1);
-            load_int(g_int_resource + 0, &i0);
+            i1 = load_int(&g_i1);
+            i0 = load_int(&g_i0);
 
             verify_load(i0, i1);
 

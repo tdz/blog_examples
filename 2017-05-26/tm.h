@@ -14,6 +14,7 @@
 #include <pthread.h>
 #include <setjmp.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 /*
  * Transaction beginning and end
@@ -46,47 +47,49 @@ void
 tm_restart(void);
 
 /*
- * Integer resources
+ * Resources
  */
 
-#define RESOURCE_HAS_LOCAL_VALUE    (1ul << 0)
+#define RESOURCE_BITSHIFT   (3)
+#define RESOURCE_NBYTES     (1ul << RESOURCE_BITSHIFT)
+#define RESOURCE_BITMASK    ((1ul << RESOURCE_BITSHIFT) - 1)
 
 /**
  * An integer value with an associated owner.
  */
-struct int_resource {
-    int             value;
-    int             local_value;
-    unsigned long   flags;
+struct resource {
+    uintptr_t       base;
+    uint8_t         local_value[RESOURCE_NBYTES];
+    uint16_t        local_bits;
     pthread_t       owner;
     pthread_mutex_t lock;
 };
 
-#define INT_RESOURCE_INITIALIZER \
+#define RESOURCE_INITIALIZER \
     { \
-        .value = 0, \
-        .local_value = 0, \
-        .flags = 0, \
+        .addr = 0, \
+        .local_bits = 0, \
         .owner = 0, \
         .lock  = PTHREAD_MUTEX_INITIALIZER \
     }
 
-/**
- * The globally shared resources.
- */
-struct int_resource g_int_resource[2];
-
 /* Resource helpers
  */
 
-bool
-acquire_int_resource(struct int_resource* res);
+struct resource*
+acquire_resource(uintptr_t base);
 
 void
-release_int_resource(struct int_resource* res, bool commit);
+release_resource(struct resource* res, bool commit);
 
 void
-load_int(struct int_resource* res, int* value);
+load(uintptr_t addr, void* buf, size_t siz);
 
 void
-store_int(struct int_resource* res, int value);
+store(uintptr_t addr, const void* buf, size_t siz);
+
+int
+load_int(const int* addr);
+
+void
+store_int(int* addr, int value);
