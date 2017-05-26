@@ -10,9 +10,12 @@
 
 BIN := simpletm
 
-SRCS := main.c \
+SRCS := array.h \
+        main.c \
+        res.c \
+        res.h \
         tm.c \
-        tm.h \
+        tm.h
 
 # Language options
 CFLAGS += -std=gnu99 -Wall -Wclobbered -O2

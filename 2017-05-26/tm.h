@@ -11,9 +11,8 @@
 
 #pragma once
 
-#include <pthread.h>
 #include <setjmp.h>
-#include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
 /*
@@ -45,42 +44,6 @@ _tm_commit(void);
 
 void
 tm_restart(void);
-
-/*
- * Resources
- */
-
-#define RESOURCE_BITSHIFT   (3)
-#define RESOURCE_NBYTES     (1ul << RESOURCE_BITSHIFT)
-#define RESOURCE_BITMASK    ((1ul << RESOURCE_BITSHIFT) - 1)
-
-/**
- * An integer value with an associated owner.
- */
-struct resource {
-    uintptr_t       base;
-    uint8_t         local_value[RESOURCE_NBYTES];
-    uint16_t        local_bits;
-    pthread_t       owner;
-    pthread_mutex_t lock;
-};
-
-#define RESOURCE_INITIALIZER \
-    { \
-        .addr = 0, \
-        .local_bits = 0, \
-        .owner = 0, \
-        .lock  = PTHREAD_MUTEX_INITIALIZER \
-    }
-
-/* Resource helpers
- */
-
-struct resource*
-acquire_resource(uintptr_t base);
-
-void
-release_resource(struct resource* res, bool commit);
 
 void
 load(uintptr_t addr, void* buf, size_t siz);
