@@ -93,7 +93,12 @@ release_resource(struct resource* res, bool commit)
 
         if (res->local_bits) {
 
-            if (commit) {
+            /* We have to store if we either commit in write-back
+             * mode, or revert in write-through mode.
+             */
+            bool store_local_bits = commit != !!(res->flags & RESOURCE_FLAG_WRITE_THROUGH);
+
+            if (store_local_bits) {
                 unsigned long bit = 1ul;
 
                 uint8_t* mem = (uint8_t*)res->base;
@@ -111,6 +116,7 @@ release_resource(struct resource* res, bool commit)
             }
 
             res->local_bits = 0;
+            res->flags = 0;
         }
 
         res->owner = 0;

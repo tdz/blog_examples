@@ -27,7 +27,8 @@
 struct resource {
     uintptr_t       base;
     uint8_t         local_value[RESOURCE_NBYTES];
-    uint16_t        local_bits;
+    uint8_t         local_bits;
+    uint8_t         flags;
     pthread_t       owner;
     pthread_mutex_t lock;
 };
@@ -35,6 +36,8 @@ struct resource {
 #define NRESOURCES_BITSHIFT (10)
 #define NRESOURCES          (1ul << NRESOURCES_BITSHIFT)
 #define NRESOURCES_BITMASK  ((1ul << NRESOURCES_BITSHIFT) - 1)
+
+#define RESOURCE_FLAG_WRITE_THROUGH     (1ul)
 
 extern struct resource g_resource[NRESOURCES];
 
