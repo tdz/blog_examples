@@ -24,32 +24,33 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #include "tm.h"
 
-static int g_i0 __attribute__((aligned(128)));
-static int g_i1 __attribute__((aligned(128)));
+static int g_i[2] __attribute__((aligned(128)));
 
 static void
 producer_func(void)
 {
     unsigned int seed = 1;
 
-    tm_save int i0 = 0;
+    tm_save int i[2] = {0, 0};
 
     while (true) {
 
         sleep(1);
 
-        ++i0;
-        int i1 = rand_r(&seed);
+        ++i[0];
+        i[1] = rand_r(&seed);
 
-        printf("Storing i0=%d, i1=%d\n", i0, i1);
+        printf("Storing i0=%d, i1=%d\n", i[0], i[1]);
 
         tm_begin
 
-            store_int(&g_i0, i0);
-            store_int(&g_i1, i1);
+            privatize((uintptr_t)g_i, sizeof(g_i), false, true);
+
+            memcpy(g_i, (const void*)i, sizeof(g_i));
 
         tm_commit
     }
@@ -80,18 +81,19 @@ consumer_func(void)
 
         sleep(1);
 
-        int i0, i1;
+        int i[2];
 
         tm_begin
 
-            i1 = load_int(&g_i1);
-            i0 = load_int(&g_i0);
+            privatize((uintptr_t)g_i, sizeof(g_i), true, false);
 
-            verify_load(i0, i1);
+            memcpy(i, g_i, sizeof(i));
+
+            verify_load(i[0], i[1]);
 
         tm_commit
 
-        printf("Loaded i0=%d, i1=%d\n", i0, i1);
+        printf("Loaded i0=%d, i1=%d\n", i[0], i[1]);
     }
 }
 
