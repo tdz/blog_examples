@@ -14,6 +14,41 @@
 #include "res.h"
 
 void
+privatize(uintptr_t addr, size_t siz, bool load, bool store)
+{
+    while (siz) {
+
+        struct resource* res = acquire_resource(addr & BASE_BITMASK);
+        if (!res) {
+            tm_restart();
+        }
+
+        unsigned long index = addr & RESOURCE_BITMASK;
+        unsigned long bits = 1ul << index;
+
+        uint8_t* beg = arraybeg(res->local_value) + index;
+        uint8_t* end = arrayend(res->local_value);
+
+        while (siz && (beg < end)) {
+            /* If we're about to store, we first have to
+             * save the old value for possible rollbacks. */
+            if (store && !(res->local_bits & bits) ) {
+                *beg = *((uint8_t*)addr);
+            }
+
+            bits <<= 1;
+            --siz;
+            ++addr;
+            ++beg;
+        }
+
+        if (store) {
+            res->flags |= RESOURCE_FLAG_WRITE_THROUGH;
+        }
+    }
+}
+
+void
 load(uintptr_t addr, void* buf, size_t siz)
 {
     uint8_t* mem = (uint8_t*)buf;

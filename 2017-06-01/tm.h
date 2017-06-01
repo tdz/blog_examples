@@ -12,6 +12,7 @@
 #pragma once
 
 #include <setjmp.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -44,6 +45,9 @@ _tm_commit(void);
 
 void
 tm_restart(void);
+
+void
+privatize(uintptr_t addr, size_t siz, bool load, bool store);
 
 void
 load(uintptr_t addr, void* buf, size_t siz);
