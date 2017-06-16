@@ -16,6 +16,13 @@
 #include <stddef.h>
 #include <stdint.h>
 
+/* Log entry */
+struct _tm_log_entry {
+    void        (*apply)(uintptr_t data);
+    void        (*undo)(uintptr_t data);
+    uintptr_t    data;
+};
+
 /*
  * Transaction beginning and end
  */
@@ -24,6 +31,9 @@
 
 struct _tm_tx {
     jmp_buf env;
+
+    unsigned long        log_length;
+    struct _tm_log_entry log[256];
 };
 
 struct _tm_tx*
@@ -60,3 +70,7 @@ load_int(const int* addr);
 
 void
 store_int(int* addr, int value);
+
+void
+append_to_log(void (*apply)(uintptr_t),
+              void (*undo)(uintptr_t), uintptr_t data);

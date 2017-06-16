@@ -10,6 +10,7 @@
  */
 
 #include "tm.h"
+#include <assert.h>
 #include "array.h"
 #include "res.h"
 
@@ -127,6 +128,23 @@ store_int(int* addr, int value)
     store((uintptr_t)addr, &value, sizeof(value));
 }
 
+void
+append_to_log(void (*apply)(uintptr_t),
+              void (*undo)(uintptr_t), uintptr_t data)
+{
+    struct _tm_tx* tx = _tm_get_tx();
+
+    assert(tx->log_length < arraylen(tx->log));
+
+    struct _tm_log_entry* entry = tx->log + tx->log_length;
+
+    entry->apply = apply;
+    entry->undo  = undo;
+    entry->data  = data;
+
+    ++tx->log_length;
+}
+
 struct _tm_tx*
 _tm_get_tx()
 {
@@ -152,11 +170,39 @@ release_resources(struct resource* beg,
     }
 }
 
+static void
+apply_log(struct _tm_log_entry* beg, const struct _tm_log_entry* end)
+{
+    while (beg < end) {
+        if (beg->apply) {
+            beg->apply(beg->data);
+        }
+        ++beg;
+    }
+}
+
+static void
+undo_log(struct _tm_log_entry* beg, const struct _tm_log_entry* end)
+{
+    while (end > beg) {
+        --end;
+        if (end->undo) {
+            end->undo(end->data);
+        }
+    }
+}
+
 void
 _tm_commit()
 {
     release_resources(arraybeg(g_resource),
                       arrayend(g_resource), true);
+
+    struct _tm_tx* tx = _tm_get_tx();
+
+    /* Perform logged operations */
+    apply_log(tx->log, tx->log + tx->log_length);
+    tx->log_length = 0;
 }
 
 void
@@ -165,6 +211,12 @@ tm_restart()
     release_resources(arraybeg(g_resource),
                       arrayend(g_resource), false);
 
+    struct _tm_tx* tx = _tm_get_tx();
+
+    /* Revert logged operations */
+    undo_log(tx->log, tx->log + tx->log_length);
+    tx->log_length = 0;
+
     /* Jump to the beginning of the transaction */
-    longjmp(_tm_get_tx()->env, 1);
+    longjmp(tx->env, 1);
 }
