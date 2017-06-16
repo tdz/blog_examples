@@ -14,6 +14,8 @@ SRCS := array.h \
         main.c \
         res.c \
         res.h \
+        stdlib-tx.c \
+        stdlib-tx.h \
         tm.c \
         tm.h
 

@@ -26,9 +26,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include "stdlib-tx.h"
 #include "tm.h"
 
-static int g_i[2] __attribute__((aligned(128)));
+static int* g_i __attribute__((aligned(128)));
 
 static void
 producer_func(void)
@@ -48,9 +49,17 @@ producer_func(void)
 
         tm_begin
 
-            privatize((uintptr_t)g_i, sizeof(g_i), false, true);
+            int* buf = NULL;
+            load((uintptr_t)&g_i, &buf, sizeof(g_i));
 
-            memcpy(g_i, (const void*)i, sizeof(g_i));
+            if (!buf) {
+
+                buf = malloc_tx(2 * sizeof(*buf));
+                buf[0] = i[0];
+                buf[1] = i[1];
+
+                store((uintptr_t)&g_i, &buf, sizeof(g_i));
+            }
 
         tm_commit
     }
@@ -81,15 +90,24 @@ consumer_func(void)
 
         sleep(1);
 
-        int i[2];
+        int i[2] = {0, 0};
 
         tm_begin
 
-            privatize((uintptr_t)g_i, sizeof(g_i), true, false);
+            int* buf = NULL;
+            load((uintptr_t)&g_i, &buf, sizeof(g_i));
 
-            memcpy(i, g_i, sizeof(i));
+            if (buf) {
+                i[0] = buf[0];
+                i[1] = buf[1];
 
-            verify_load(i[0], i[1]);
+                verify_load(i[0], i[1]);
+
+                free_tx(buf);
+
+                buf = NULL;
+                store((uintptr_t)&g_i, &buf, sizeof(g_i));
+            }
 
         tm_commit
 
