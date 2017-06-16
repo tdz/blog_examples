@@ -18,7 +18,7 @@ SRCS := array.h \
         tm.h
 
 # Language options
-CFLAGS += -std=gnu99 -Wall -Wclobbered -O2
+CFLAGS += -std=gnu99 -Wall -Wclobbered -O2 -ggdb
 
 # POSIX threads
 CFLAGS += -pthread
