@@ -34,6 +34,9 @@ struct _tm_tx {
 
     unsigned long        log_length;
     struct _tm_log_entry log[256];
+
+    bool errno_saved;
+    int errno_value;
 };
 
 struct _tm_tx*
@@ -74,3 +77,6 @@ store_int(int* addr, int value);
 void
 append_to_log(void (*apply)(uintptr_t),
               void (*undo)(uintptr_t), uintptr_t data);
+
+void
+save_errno(void);

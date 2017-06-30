@@ -11,6 +11,7 @@
 
 #include "tm.h"
 #include <assert.h>
+#include <errno.h>
 #include "array.h"
 #include "res.h"
 
@@ -217,6 +218,25 @@ tm_restart()
     undo_log(tx->log, tx->log + tx->log_length);
     tx->log_length = 0;
 
+    /* Restore errno */
+    if (tx->errno_saved) {
+        errno = tx->errno_value;
+        tx->errno_saved = false;
+    }
+
     /* Jump to the beginning of the transaction */
     longjmp(tx->env, 1);
+}
+
+void
+save_errno()
+{
+    struct _tm_tx* tx = _tm_get_tx();
+
+    if (tx->errno_saved) {
+        return;
+    }
+
+    tx->errno_value = errno;
+    tx->errno_saved = true;
 }
