@@ -22,6 +22,8 @@ undo_malloc_tx(uintptr_t data)
 void*
 malloc_tx(size_t size)
 {
+    save_errno();
+
     void* ptr = malloc(size);
 
     append_to_log(NULL, undo_malloc_tx, (uintptr_t)ptr);
