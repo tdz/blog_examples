@@ -10,6 +10,8 @@
  */
 
 #include "stdlib-tx.h"
+#include <errno.h>
+#include <time.h>
 #include "tm.h"
 
 static void
@@ -19,12 +21,28 @@ undo_malloc_tx(uintptr_t data)
     free(ptr);
 }
 
+static void*
+malloc_with_low_mem(size_t size)
+{
+    /* simulate spurious allocation failures */
+    clock_t cputime = clock();
+    if (!(cputime % 3)) {
+        errno = ENOMEM;
+        return NULL;
+    }
+
+    return malloc(size);
+}
+
 void*
 malloc_tx(size_t size)
 {
     save_errno();
 
-    void* ptr = malloc(size);
+    void* ptr = malloc_with_low_mem(size);
+    if (!ptr) {
+        tm_recover(errno); /* does not return */
+    }
 
     append_to_log(NULL, undo_malloc_tx, (uintptr_t)ptr);
 
