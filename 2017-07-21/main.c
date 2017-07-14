@@ -62,6 +62,7 @@ producer_func(void)
             }
 
         tm_commit
+        tm_end
     }
 }
 
@@ -110,6 +111,7 @@ consumer_func(void)
             }
 
         tm_commit
+        tm_end
 
         printf("Loaded i0=%d, i1=%d\n", i[0], i[1]);
     }

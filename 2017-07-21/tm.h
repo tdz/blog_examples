@@ -37,27 +37,38 @@ struct _tm_tx {
 
     bool errno_saved;
     int errno_value;
+
+    int recovery_errno_code;
 };
 
 struct _tm_tx*
 _tm_get_tx(void);
 
-void
+bool
 _tm_begin(int value);
 
 void
 _tm_commit(void);
 
-#define tm_begin                            \
-    _tm_begin(setjmp(_tm_get_tx()->env));   \
+#define tm_begin                                \
+    if (_tm_begin(setjmp(_tm_get_tx()->env)))   \
     {
 
 #define tm_commit                           \
         _tm_commit();                       \
+    } else {
+
+#define tm_end  \
     }
 
 void
 tm_restart(void);
+
+void
+tm_recover(int errno_code);
+
+int
+tm_recovery_errno(void);
 
 void
 privatize(uintptr_t addr, size_t siz, bool load, bool store);

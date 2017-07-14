@@ -155,10 +155,10 @@ _tm_get_tx()
     return &t_tm_tx;
 }
 
-void
+bool
 _tm_begin(int value)
 {
-    /* Nothing to do */
+    return value != 2;
 }
 
 static void
@@ -206,13 +206,11 @@ _tm_commit()
     tx->log_length = 0;
 }
 
-void
-tm_restart()
+static void
+rollback_tx(struct _tm_tx* tx, int value)
 {
     release_resources(arraybeg(g_resource),
                       arrayend(g_resource), false);
-
-    struct _tm_tx* tx = _tm_get_tx();
 
     /* Revert logged operations */
     undo_log(tx->log, tx->log + tx->log_length);
@@ -225,7 +223,31 @@ tm_restart()
     }
 
     /* Jump to the beginning of the transaction */
-    longjmp(tx->env, 1);
+    longjmp(tx->env, value);
+}
+
+void
+tm_restart()
+{
+    rollback_tx(_tm_get_tx(), 1);
+}
+
+void
+tm_recover(int errno_code)
+{
+    struct _tm_tx* tx = _tm_get_tx();
+
+    tx->recovery_errno_code = errno_code;
+
+    rollback_tx(tx, 2);
+}
+
+int
+tm_recovery_errno(void)
+{
+    struct _tm_tx* tx = _tm_get_tx();
+
+    return tx->recovery_errno_code;
 }
 
 void
