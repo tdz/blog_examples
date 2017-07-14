@@ -32,6 +32,13 @@
 static int* g_i __attribute__((aligned(128)));
 
 static void
+recover_from_errno(int errno_code)
+{
+    fprintf(stderr, "Recovering from error %d (%s)\n", errno_code,
+            strerror(errno_code));
+}
+
+static void
 producer_func(void)
 {
     unsigned int seed = 1;
@@ -62,6 +69,8 @@ producer_func(void)
             }
 
         tm_commit
+            recover_from_errno(tm_recovery_errno());
+            tm_restart();
         tm_end
     }
 }
@@ -111,6 +120,8 @@ consumer_func(void)
             }
 
         tm_commit
+            recover_from_errno(tm_recovery_errno());
+            tm_restart();
         tm_end
 
         printf("Loaded i0=%d, i1=%d\n", i[0], i[1]);
